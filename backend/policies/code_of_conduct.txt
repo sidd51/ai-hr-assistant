@@ -1,0 +1,31 @@
+COMPANY CODE OF CONDUCT
+=========================
+
+1. PROFESSIONAL BEHAVIOUR
+   All employees must treat colleagues, clients, and vendors with respect.
+   Harassment, discrimination, or bullying of any form is strictly prohibited.
+   Employees must maintain confidentiality of company and client data.
+
+2. WORKING HOURS
+   Standard working hours are 9:00 AM to 6:00 PM, Monday to Friday.
+   Employees are expected to be available during core hours (10 AM - 4 PM).
+   Remote work is permitted with manager approval up to 3 days per week.
+
+3. CONFLICT OF INTEREST
+   Employees must disclose any personal relationships with vendors or clients.
+   Working for a competitor or starting a competing business is prohibited.
+   Outside employment must be declared to HR and must not affect performance.
+
+4. DATA AND SECURITY
+   Company laptops must have full-disk encryption enabled at all times.
+   Sharing login credentials with anyone, including teammates, is prohibited.
+   Customer data must never be stored on personal devices.
+
+5. SOCIAL MEDIA
+   Employees must not share confidential company information on social media.
+   Opinions expressed online must be clearly personal and not represent the company.
+
+6. DISCIPLINARY PROCESS
+   Violations are handled through a 3-step process: verbal warning, written
+   warning, and termination. Severe violations may result in immediate termination.
+   All disciplinary actions are documented and stored confidentially by HR.
