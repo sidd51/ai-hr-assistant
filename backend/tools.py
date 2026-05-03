@@ -1,5 +1,5 @@
 import re
-from datetime import datetime
+from datetime import date, datetime
 
 from dotenv import load_dotenv
 from langchain_core.tools import tool
@@ -25,6 +25,10 @@ ALLOWED_TABLES = {
 
 SQL_KEYWORDS_PATTERN = re.compile(
     r"\b(insert|update|delete|drop|alter|truncate|create|grant|revoke|commit|rollback)\b",
+    re.IGNORECASE,
+)
+PLACEHOLDER_PATTERN = re.compile(
+    r"\b(your_email|employee_email|employee name|employee_name)\b",
     re.IGNORECASE,
 )
 
@@ -106,7 +110,63 @@ def _strip_code_fences(text_value: str) -> str:
     return cleaned.strip()
 
 
-def _generate_select_sql(question: str) -> str:
+def _extract_employee_id(query: str) -> int | None:
+    employee_id_match = re.search(
+        r"employee[\s_-]*(?:id)?\s*[:=#-]?\s*(\d+)",
+        query,
+        flags=re.IGNORECASE,
+    )
+    if employee_id_match:
+        return int(employee_id_match.group(1))
+    return None
+
+
+def _calculate_requested_days(start_date: date, end_date: date) -> int:
+    return (end_date - start_date).days + 1
+
+
+def _get_leave_balance_row(employee_id: int, leave_type: str | None = None):
+    sql = """
+SELECT
+    e.id AS employee_id,
+    e.name AS employee_name,
+    lb.leave_type,
+    lb.total_days,
+    lb.used_days,
+    lb.total_days - lb.used_days AS remaining_days
+FROM leave_balance lb
+JOIN employees e ON e.id = lb.employee_id
+WHERE e.id = :employee_id
+"""
+    params = {"employee_id": employee_id}
+    if leave_type:
+        sql += " AND lb.leave_type = :leave_type"
+        params["leave_type"] = leave_type
+
+    sql += " ORDER BY lb.leave_type"
+
+    with engine.connect() as connection:
+        if leave_type:
+            return connection.execute(text(sql), params).mappings().first()
+        return connection.execute(text(sql), params).mappings().all()
+
+
+def _render_result_rows(rows) -> str:
+    rendered_rows = [
+        {key: str(value) if value is not None else None for key, value in row.items()}
+        for row in rows
+    ]
+    return f"Result: {rendered_rows}"
+
+
+def _generate_select_sql(question: str, employee_id: int | None = None) -> str:
+    if employee_id is not None:
+        question = (
+            f"Employee ID to use for any employee-specific filtering: {employee_id}. "
+            "For employee-specific questions, use employee_id directly and never infer "
+            f"identity from email, name, or placeholders.\nUser question: {question}"
+        )
+
     sql = _get_sql_query_chain().invoke(
         {
             "question": question,
@@ -121,6 +181,9 @@ def _generate_select_sql(question: str) -> str:
 
     if SQL_KEYWORDS_PATTERN.search(sql):
         raise ValueError("Generated SQL contained a non-read-only statement.")
+
+    if PLACEHOLDER_PATTERN.search(sql):
+        raise ValueError("Generated SQL contained a placeholder identity value.")
 
     sql_no_trailing_semicolon = sql.rstrip().rstrip(";")
     if ";" in sql_no_trailing_semicolon:
@@ -150,20 +213,21 @@ def _execute_select_sql(sql: str) -> str:
     if not rows:
         return f"SQL: {sql}\nResult: No matching records found."
 
-    rendered_rows = [
-        {key: str(value) if value is not None else None for key, value in row.items()}
-        for row in rows
-    ]
+    rendered_rows = _render_result_rows(rows).removeprefix("Result: ")
     return f"SQL: {sql}\nResult: {rendered_rows}"
 
 
-def _handle_leave_balance_query(query: str) -> str | None:
+def _handle_leave_balance_query(query: str, employee_id: int | None = None) -> str | None:
     lower_query = query.lower()
     is_leave_balance_question = any(
         phrase in lower_query
         for phrase in ("leave days", "leave balance", "days left", "leave left")
     )
     if not is_leave_balance_question:
+        return None
+
+    employee_id = employee_id or _extract_employee_id(query)
+    if employee_id is None:
         return None
 
     leave_type = next(
@@ -174,55 +238,18 @@ def _handle_leave_balance_query(query: str) -> str | None:
         ),
         None,
     )
-    if not leave_type:
-        return None
 
-    employee_id_match = re.search(
-        r"employee\s*(?:id)?\s*[:#-]?\s*(\d+)",
-        query,
-        flags=re.IGNORECASE,
-    )
-    name_match = (
-        re.search(r"does\s+([A-Za-z][A-Za-z\s]+?)\s+have", query, flags=re.IGNORECASE)
-        or re.search(r"([A-Za-z][A-Za-z\s]+?)'s\s+.*leave", query, flags=re.IGNORECASE)
-    )
+    if leave_type is None:
+        rows = _get_leave_balance_row(employee_id)
+        if not rows:
+            return None
+        return _render_result_rows(rows)
 
-    sql = """
-SELECT
-    e.id AS employee_id,
-    e.name AS employee_name,
-    lb.leave_type,
-    lb.total_days,
-    lb.used_days,
-    lb.total_days - lb.used_days AS remaining_days
-FROM leave_balance lb
-JOIN employees e ON e.id = lb.employee_id
-WHERE lb.leave_type = :leave_type
-"""
-    params = {"leave_type": leave_type}
-
-    if employee_id_match:
-        sql += " AND e.id = :employee_id"
-        params["employee_id"] = int(employee_id_match.group(1))
-    elif name_match:
-        name_pattern = name_match.group(1).strip()
-        sql += " AND e.name ILIKE :employee_name"
-        params["employee_name"] = f"%{name_pattern}%"
-    else:
-        return None
-
-    sql += " LIMIT 1"
-
-    with engine.connect() as connection:
-        row = connection.execute(text(sql), params).mappings().first()
-
+    row = _get_leave_balance_row(employee_id, leave_type)
     if not row:
         return None
 
-    rendered_row = {
-        key: str(value) if value is not None else None for key, value in row.items()
-    }
-    return f"Result: {[rendered_row]}"
+    return _render_result_rows([row])
 
 
 @tool(return_direct=True)
@@ -263,7 +290,7 @@ def search_hr_policy(query: str) -> str:
 
 
 @tool
-def query_employee_data(query: str) -> str:
+def query_employee_data(query: str, employee_id: int | None = None) -> str:
     """
     Query the HR database to get employee-specific information.
     Use this for questions like:
@@ -272,14 +299,17 @@ def query_employee_data(query: str) -> str:
     - Show me my pending expense claims
     - How many sick days have I used?
     - What is my leave history?
+    When the employee ID is known, always pass it explicitly.
     The query should be a plain English question about employee data.
     """
     try:
-        leave_balance_result = _handle_leave_balance_query(query)
+        resolved_employee_id = employee_id or _extract_employee_id(query)
+
+        leave_balance_result = _handle_leave_balance_query(query, resolved_employee_id)
         if leave_balance_result:
             return leave_balance_result
 
-        sql = _generate_select_sql(query)
+        sql = _generate_select_sql(query, resolved_employee_id)
         return _execute_select_sql(sql)
     except Exception as exc:
         return f"Could not retrieve data: {exc}"
@@ -303,12 +333,32 @@ def submit_leave_request(
     Example: employee 1 wants annual leave from 2025-02-10 to 2025-02-14
     """
     try:
+        start = datetime.strptime(start_date, "%Y-%m-%d").date()
+        end = datetime.strptime(end_date, "%Y-%m-%d").date()
+        if end < start:
+            return "Failed to submit leave request: end_date cannot be before start_date."
+
+        leave_balance = _get_leave_balance_row(employee_id, leave_type)
+        if not leave_balance:
+            return (
+                "Failed to submit leave request: could not verify the employee's leave "
+                "balance for that leave type."
+            )
+
+        requested_days = _calculate_requested_days(start, end)
+        remaining_days = int(leave_balance["remaining_days"])
+        if remaining_days < requested_days:
+            return (
+                "Failed to submit leave request: insufficient leave balance. "
+                f"Requested {requested_days} day(s), but only {remaining_days} remain."
+            )
+
         with Session(engine) as session:
             request = LeaveRequest(
                 employee_id=employee_id,
                 leave_type=leave_type,
-                start_date=datetime.strptime(start_date, "%Y-%m-%d").date(),
-                end_date=datetime.strptime(end_date, "%Y-%m-%d").date(),
+                start_date=start,
+                end_date=end,
                 status="pending",
                 submitted_at=datetime.now(),
             )

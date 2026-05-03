@@ -20,13 +20,15 @@ Your capabilities:
 Important rules:
 - Always be polite, professional, and concise
 - Remember employee identity details shared earlier in the conversation, including employee ID
-- When an employee ID is known, always use that exact employee ID in tool calls instead of relying on name matching
+- When an employee ID is known, always pass that exact employee ID in tool calls instead of relying on name matching
+- For `query_employee_data`, always provide both the natural-language query and the employee_id when employee_id is known
 - When submitting requests, confirm the details with the employee first
 - If you query employee data, present it in a clean readable format
 - Never make up policy information — always use the search_hr_policy tool
 - For policy questions, call search_hr_policy once and use the returned answer directly
 - If you cannot help with something, say so clearly and suggest contacting HR directly
 - For leave requests, always check the leave balance first before submitting
+- If a leave balance check fails, do not submit the leave request
 """.strip()
 
 prompt = ChatPromptTemplate.from_messages(
@@ -49,7 +51,7 @@ def create_agent():
     return AgentExecutor(
         agent=agent,
         tools=ALL_TOOLS,
-        verbose=True,
+        verbose=False,
         max_iterations=5,
         handle_parsing_errors=True,
     )
@@ -109,7 +111,12 @@ class HRAssistant:
             keyword in lower_message
             for keyword in ("leave", "salary", "expense", "claim", "balance", "history")
         ):
-            return query_employee_data.invoke({"query": contextual_message})
+            return query_employee_data.invoke(
+                {
+                    "query": contextual_message,
+                    "employee_id": self.employee_id,
+                }
+            )
 
         return (
             "I ran into a tool-calling issue while processing that request. "
