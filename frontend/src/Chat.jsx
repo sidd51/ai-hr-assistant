@@ -85,7 +85,7 @@ export default function Chat({ employee, onLogout }) {
         <div className={styles.sideTop}>
           <div className={styles.brand}>
             
-            <span className={styles.brandName}>Nexus HR</span>
+            <span className={styles.brandName}>HarborHR</span>
           </div>
 
           <div className={styles.profile}>
@@ -130,7 +130,7 @@ export default function Chat({ employee, onLogout }) {
         <header className={styles.header}>
           <div className={styles.headerLeft}>
             <div className={styles.statusDot} />
-            <span className={styles.headerTitle}>Nexus</span>
+            <span className={styles.headerTitle}>Assistant</span>
           </div>
           <div className={styles.headerRight}>
             {sessionId && (

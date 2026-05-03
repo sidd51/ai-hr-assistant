@@ -18,7 +18,7 @@ export default function Login({ onLogin }) {
 
         <div className={styles.brand}>
           <div>
-            <div className={styles.brandName}>Nexus HR</div>
+            <div className={styles.brandName}>HarborHR</div>
             <div className={styles.brandSub}>a safe port for all your HR needs</div>
           </div>
         </div>
