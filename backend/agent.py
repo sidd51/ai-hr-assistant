@@ -51,7 +51,7 @@ def create_agent():
     return AgentExecutor(
         agent=agent,
         tools=ALL_TOOLS,
-        verbose=False,
+        verbose=True,
         max_iterations=5,
         handle_parsing_errors=True,
     )
