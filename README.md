@@ -3,14 +3,7 @@
 
 > An AI-powered HR assistant that lets employees query leave balances, understand company policies, and submit requests — all in plain English. Built with a LangChain agent that dynamically routes between a RAG policy engine and a live SQL database.
 
-**[Live Demo](https://harborhr.vercel.app)** · **[Backend API Docs](https://harborhr-api.up.railway.app/docs)**
-
 ---
-
-![HarborHR Screenshot](https://via.placeholder.com/900x500/080a0e/4ade9e?text=HarborHR+Screenshot)
-
----
-
 ## What it does
 
 Most employees don't know where to find HR policies, and HR teams spend hours answering the same questions repeatedly. HarborHR fixes both sides of that problem.
