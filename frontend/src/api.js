@@ -1,4 +1,5 @@
-const  BASE ="http://127.0.0.1:8000";
+// Automatically uses Railway in production, localhost in dev
+const BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export async function sendMessage({ message, session_id, employee_id}){
   const res = await fetch(`${BASE}/chat`,{

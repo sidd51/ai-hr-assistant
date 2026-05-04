@@ -17,11 +17,16 @@ app  = FastAPI(
 )
 
 app.add_middleware(
-  CORSMiddleware,
-  allow_origins=["http://localhost:5174", "http://localhost:3000"],
-  allow_credentials= True,
-  allow_methods=["*"],
-  allow_headers=["*"],
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "https://your-app.vercel.app",  # ← add this after Vercel deploy
+        os.getenv("FRONTEND_URL", ""),  # ← reads from Railway env vars
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # ── Session store ─────────────────────────────────────────────────────────────
