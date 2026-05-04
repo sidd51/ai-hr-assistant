@@ -21,7 +21,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://localhost:3000",
-        "https://your-app.vercel.app",  # ← add this after Vercel deploy
+        "https://harborhr.vercel.app",  # ← add this after Vercel deploy
         os.getenv("FRONTEND_URL", ""),  # ← reads from Railway env vars
     ],
     allow_credentials=True,
