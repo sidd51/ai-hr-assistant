@@ -1,11 +1,6 @@
-
-from langchain_classic.agents import AgentExecutor, create_tool_calling_agent
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 import re
-
-from llm import get_llm
-from tools import ALL_TOOLS, query_employee_data, search_hr_policy
 
 SYSTEM_PROMPT = """
 You are a helpful and professional HR Assistant for our company.
@@ -41,16 +36,26 @@ prompt = ChatPromptTemplate.from_messages(
 )
 
 
+def _get_tools():
+    from tools import ALL_TOOLS, query_employee_data, search_hr_policy
+
+    return ALL_TOOLS, query_employee_data, search_hr_policy
+
+
 def create_agent():
     """
     Builds and returns the LangChain agent executor.
     """
+    from langchain_classic.agents import AgentExecutor, create_tool_calling_agent
+    from llm import get_llm
+
+    all_tools, _, _ = _get_tools()
     llm = get_llm()
-    agent = create_tool_calling_agent(llm, ALL_TOOLS, prompt)
+    agent = create_tool_calling_agent(llm, all_tools, prompt)
 
     return AgentExecutor(
         agent=agent,
-        tools=ALL_TOOLS,
+        tools=all_tools,
         verbose=True,
         max_iterations=5,
         handle_parsing_errors=True,
@@ -88,6 +93,7 @@ class HRAssistant:
         )
 
     def _fallback_response(self, user_message: str) -> str:
+        _, query_employee_data, search_hr_policy = _get_tools()
         lower_message = user_message.lower()
         contextual_message = user_message
         if self.employee_id is not None and "employee id" not in lower_message:

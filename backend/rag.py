@@ -1,5 +1,4 @@
 import os
-import shutil
 
 import chromadb
 from dotenv import load_dotenv
@@ -10,7 +9,7 @@ from llama_index.vector_stores.chroma import ChromaVectorStore
 load_dotenv()
 
 POLICIES_PATH = os.getenv("POLICIES_PATH", "policies/")
-CHROMA_PATH   = os.getenv("CHROMA_PATH",   "data/chroma_store")
+CHROMA_PATH = os.getenv("CHROMA_PATH", "data/chroma_store")
 
 
 def _get_embed_model():
@@ -32,10 +31,10 @@ def build_index():
     documents = SimpleDirectoryReader(POLICIES_PATH).load_data()
     print(f"Loaded {len(documents)} document(s)")
 
-    chroma_client     = chromadb.PersistentClient(path=CHROMA_PATH)
+    chroma_client = chromadb.PersistentClient(path=CHROMA_PATH)
     chroma_collection = chroma_client.get_or_create_collection("hr_policies")
-    vector_store      = ChromaVectorStore(chroma_collection=chroma_collection)
-    storage_context   = StorageContext.from_defaults(vector_store=vector_store)
+    vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
+    storage_context = StorageContext.from_defaults(vector_store=vector_store)
 
     Settings.embed_model = _get_embed_model()
 
@@ -52,10 +51,10 @@ def load_index():
     Loads the existing ChromaDB index from disk.
     Use this at app startup or on demand.
     """
-    chroma_client     = chromadb.PersistentClient(path=CHROMA_PATH)
+    chroma_client = chromadb.PersistentClient(path=CHROMA_PATH)
     chroma_collection = chroma_client.get_or_create_collection("hr_policies")
-    vector_store      = ChromaVectorStore(chroma_collection=chroma_collection)
-    storage_context   = StorageContext.from_defaults(vector_store=vector_store)
+    vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
+    storage_context = StorageContext.from_defaults(vector_store=vector_store)
 
     Settings.embed_model = _get_embed_model()
 
@@ -70,7 +69,7 @@ def retrieve_policy_context(query: str, top_k: int = 3) -> list[str]:
     Retrieves the most relevant policy chunks for a user question.
     """
     retriever = load_index().as_retriever(similarity_top_k=top_k)
-    nodes     = retriever.retrieve(query)
+    nodes = retriever.retrieve(query)
 
     chunks = []
     for item in nodes:
@@ -97,33 +96,7 @@ def retrieve_policy_context(query: str, top_k: int = 3) -> list[str]:
     return chunks
 
 
-def get_or_build_index():
-    """
-    Checks if index exists on disk.
-    Builds it fresh if not (first deploy on Railway).
-    Loads from disk if it does (subsequent restarts).
-    """
-    if not os.path.exists(CHROMA_PATH) or not os.listdir(CHROMA_PATH):
-        print("No index found — building from scratch...")
-        build_index()
-    return load_index()
-
-
-def get_query_engine():
-    """
-    Returns a query engine backed by get_or_build_index.
-    Called by tools.py at agent startup.
-    """
-    index = get_or_build_index()
-    return index.as_query_engine(similarity_top_k=3)
-
-
-# ── Local dev test only ───────────────────────────────────────────────────────
 if __name__ == "__main__":
-    if os.path.exists(CHROMA_PATH):
-        shutil.rmtree(CHROMA_PATH)
-        print("Cleared old index")
-
     build_index()
 
     print("\nTesting retrieval...")
@@ -132,7 +105,19 @@ if __name__ == "__main__":
         "What is the maternity leave policy?",
         "How do I submit an expense claim?",
     ]
+
     for question in test_questions:
         print(f"\nQ: {question}")
         for index, chunk in enumerate(retrieve_policy_context(question), start=1):
             print(f"Excerpt {index}: {chunk[:250]}...")
+
+def get_or_build_index():
+    """
+    Checks if index exists on disk.
+    Builds it fresh if not (first deploy).
+    Loads from disk if it does (subsequent restarts).
+    """
+    if not os.path.exists(CHROMA_PATH) or not os.listdir(CHROMA_PATH):
+        print("No index found — building from scratch...")
+        build_index()
+    return load_index()

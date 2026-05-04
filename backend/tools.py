@@ -6,13 +6,11 @@ from langchain_core.tools import tool
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from langchain_classic.chains import create_sql_query_chain
 from langchain_community.utilities import SQLDatabase
 from langchain_core.prompts import PromptTemplate
 
 from llm import get_llm
 from models import ExpenseClaim, LeaveRequest, engine
-from rag import retrieve_policy_context
 
 load_dotenv()
 
@@ -69,6 +67,8 @@ SQL_QUERY_CHAIN = None
 def _get_sql_query_chain():
     global SQL_QUERY_CHAIN
     if SQL_QUERY_CHAIN is None:
+        from langchain_classic.chains import create_sql_query_chain
+
         SQL_QUERY_CHAIN = create_sql_query_chain(
             llm=get_llm(),
             db=SQL_DB,
@@ -264,6 +264,8 @@ def search_hr_policy(query: str) -> str:
     - What expenses are reimbursable?
     """
     try:
+        from rag import retrieve_policy_context
+
         context_chunks = retrieve_policy_context(query, top_k=3)
         if not context_chunks:
             return "I couldn't find a matching policy section for that question."

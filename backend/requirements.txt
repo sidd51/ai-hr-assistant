@@ -2,6 +2,7 @@ fastapi
 uvicorn
 python-dotenv
 python-multipart
+numpy==1.26.4
 sqlalchemy
 psycopg2-binary
 alembic
@@ -16,7 +17,7 @@ llama-index-core
 llama-index-embeddings-huggingface
 llama-index-vector-stores-chroma
 chromadb
-sentence-transformers
+sentence-transformers==2.7.0
 torch==2.2.2
-transformers
+transformers==4.41.2
 huggingface_hub
